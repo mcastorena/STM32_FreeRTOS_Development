@@ -1,5 +1,5 @@
 /*
- * FreeRTOS Kernel <DEVELOPMENT BRANCH>
+ * FreeRTOS Kernel V11.1.0
  * Copyright (C) 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * SPDX-License-Identifier: MIT
@@ -34,7 +34,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#ifndef __ARM_FP
+#ifndef __VFP_FP__
     #error This port can only be used when the project options are configured to enable hardware floating point support.
 #endif
 
@@ -260,8 +260,8 @@ static void prvTaskExitError( void )
 void vPortSVCHandler( void )
 {
     __asm volatile (
-        "   ldr r3, =pxCurrentTCB           \n" /* Restore the context. */
-        "   ldr r1, [r3]                    \n" /* Get the pxCurrentTCB address. */
+        "   ldr r3, pxCurrentTCBConst2      \n" /* Restore the context. */
+        "   ldr r1, [r3]                    \n" /* Use pxCurrentTCBConst to get the pxCurrentTCB address. */
         "   ldr r0, [r1]                    \n" /* The first item in pxCurrentTCB is the task top of stack. */
         "   ldmia r0!, {r4-r11, r14}        \n" /* Pop the registers that are not automatically saved on exception entry and the critical nesting count. */
         "   msr psp, r0                     \n" /* Restore the task stack pointer. */
@@ -270,7 +270,8 @@ void vPortSVCHandler( void )
         "   msr basepri, r0                 \n"
         "   bx r14                          \n"
         "                                   \n"
-        "   .ltorg                          \n"
+        "   .align 4                        \n"
+        "pxCurrentTCBConst2: .word pxCurrentTCB             \n"
         );
 }
 /*-----------------------------------------------------------*/
@@ -334,7 +335,7 @@ BaseType_t xPortStartScheduler( void )
          *
          * Assertion failures here indicate incorrect installation of the
          * FreeRTOS handlers. For help installing the FreeRTOS handlers, see
-         * https://www.freertos.org/Why-FreeRTOS/FAQs.
+         * https://www.FreeRTOS.org/FAQHelp.html.
          *
          * Systems with a configurable address for the interrupt vector table
          * can also encounter assertion failures or even system faults here if
@@ -464,6 +465,82 @@ BaseType_t xPortStartScheduler( void )
 }
 /*-----------------------------------------------------------*/
 
+void vInitPrioGroupValue(void)
+{
+    /* configMAX_SYSCALL_INTERRUPT_PRIORITY must not be set to 0.
+     * See https://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html */
+    configASSERT( configMAX_SYSCALL_INTERRUPT_PRIORITY );
+
+    /* This port can be used on all revisions of the Cortex-M7 core other than
+     * the r0p1 parts.  r0p1 parts should use the port from the
+     * /source/portable/GCC/ARM_CM7/r0p1 directory. */
+    configASSERT( portCPUID != portCORTEX_M7_r0p1_ID );
+    configASSERT( portCPUID != portCORTEX_M7_r0p0_ID );
+
+    #if ( configASSERT_DEFINED == 1 )
+        {
+            volatile uint32_t ulOriginalPriority;
+            volatile uint8_t * const pucFirstUserPriorityRegister = ( volatile uint8_t * const ) ( portNVIC_IP_REGISTERS_OFFSET_16 + portFIRST_USER_INTERRUPT_NUMBER );
+            volatile uint8_t ucMaxPriorityValue;
+
+            /* Determine the maximum priority from which ISR safe FreeRTOS API
+             * functions can be called.  ISR safe functions are those that end in
+             * "FromISR".  FreeRTOS maintains separate thread and ISR API functions to
+             * ensure interrupt entry is as fast and simple as possible.
+             *
+             * Save the interrupt priority value that is about to be clobbered. */
+            ulOriginalPriority = *pucFirstUserPriorityRegister;
+
+            /* Determine the number of priority bits available.  First write to all
+             * possible bits. */
+            *pucFirstUserPriorityRegister = portMAX_8_BIT_VALUE;
+
+            /* Read the value back to see how many bits stuck. */
+            ucMaxPriorityValue = *pucFirstUserPriorityRegister;
+
+            /* Use the same mask on the maximum system call priority. */
+            ucMaxSysCallPriority = configMAX_SYSCALL_INTERRUPT_PRIORITY & ucMaxPriorityValue;
+
+            /* Calculate the maximum acceptable priority group value for the number
+             * of bits read back. */
+            ulMaxPRIGROUPValue = portMAX_PRIGROUP_BITS;
+
+            while( ( ucMaxPriorityValue & portTOP_BIT_OF_BYTE ) == portTOP_BIT_OF_BYTE )
+            {
+                ulMaxPRIGROUPValue--;
+                ucMaxPriorityValue <<= ( uint8_t ) 0x01;
+            }
+
+            #ifdef __NVIC_PRIO_BITS
+                {
+                    /* Check the CMSIS configuration that defines the number of
+                     * priority bits matches the number of priority bits actually queried
+                     * from the hardware. */
+                    configASSERT( ( portMAX_PRIGROUP_BITS - ulMaxPRIGROUPValue ) == __NVIC_PRIO_BITS );
+                }
+            #endif
+
+            #ifdef configPRIO_BITS
+                {
+                    /* Check the FreeRTOS configuration that defines the number of
+                     * priority bits matches the number of priority bits actually queried
+                     * from the hardware. */
+                    configASSERT( ( portMAX_PRIGROUP_BITS - ulMaxPRIGROUPValue ) == configPRIO_BITS );
+                }
+            #endif
+
+            /* Shift the priority group value back to its position within the AIRCR
+             * register. */
+            ulMaxPRIGROUPValue <<= portPRIGROUP_SHIFT;
+            ulMaxPRIGROUPValue &= portPRIORITY_GROUP_MASK;
+
+            /* Restore the clobbered interrupt priority register to its original
+             * value. */
+            *pucFirstUserPriorityRegister = ulOriginalPriority;
+        }
+    #endif /* conifgASSERT_DEFINED */
+}
+
 void vPortEndScheduler( void )
 {
     /* Not implemented in ports where there is nothing to return to.
@@ -510,7 +587,7 @@ void xPortPendSVHandler( void )
         "   mrs r0, psp                         \n"
         "   isb                                 \n"
         "                                       \n"
-        "   ldr r3, =pxCurrentTCB               \n" /* Get the location of the current TCB. */
+        "   ldr r3, pxCurrentTCBConst           \n" /* Get the location of the current TCB. */
         "   ldr r2, [r3]                        \n"
         "                                       \n"
         "   tst r14, #0x10                      \n" /* Is the task using the FPU context?  If so, push high vfp registers. */
@@ -551,7 +628,8 @@ void xPortPendSVHandler( void )
         "                                       \n"
         "   bx r14                              \n"
         "                                       \n"
-        "   .ltorg                              \n"
+        "   .align 4                            \n"
+        "pxCurrentTCBConst: .word pxCurrentTCB  \n"
         ::"i" ( configMAX_SYSCALL_INTERRUPT_PRIORITY )
     );
 }
@@ -884,7 +962,7 @@ static void vPortEnableVFP( void )
              *
              * The following links provide detailed information:
              * https://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html
-             * https://www.freertos.org/Why-FreeRTOS/FAQs */
+             * https://www.FreeRTOS.org/FAQHelp.html */
             configASSERT( ucCurrentPriority >= ucMaxSysCallPriority );
         }
 

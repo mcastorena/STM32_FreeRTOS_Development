@@ -2202,11 +2202,11 @@ UBaseType_t uxQueueMessagesWaiting( const QueueHandle_t xQueue )
 
     configASSERT( xQueue );
 
-    portBASE_TYPE_ENTER_CRITICAL();
+    portTICK_TYPE_ENTER_CRITICAL();
     {
         uxReturn = ( ( Queue_t * ) xQueue )->uxMessagesWaiting;
     }
-    portBASE_TYPE_EXIT_CRITICAL();
+    portTICK_TYPE_ENTER_CRITICAL();
 
     traceRETURN_uxQueueMessagesWaiting( uxReturn );
 
@@ -2223,11 +2223,11 @@ UBaseType_t uxQueueSpacesAvailable( const QueueHandle_t xQueue )
 
     configASSERT( pxQueue );
 
-    portBASE_TYPE_ENTER_CRITICAL();
+    portTICK_TYPE_ENTER_CRITICAL();
     {
         uxReturn = ( UBaseType_t ) ( pxQueue->uxLength - pxQueue->uxMessagesWaiting );
     }
-    portBASE_TYPE_EXIT_CRITICAL();
+    portTICK_TYPE_ENTER_CRITICAL();
 
     traceRETURN_uxQueueSpacesAvailable( uxReturn );
 
