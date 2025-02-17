@@ -2624,7 +2624,7 @@ static void prvInitialiseNewTask( TaskFunction_t pxTaskCode,
 
         traceENTER_uxTaskPriorityGet( xTask );
 
-        portBASE_TYPE_ENTER_CRITICAL();
+        portTICK_TYPE_ENTER_CRITICAL();
         {
             /* If null is passed in here then it is the priority of the task
              * that called uxTaskPriorityGet() that is being queried. */
@@ -2633,7 +2633,7 @@ static void prvInitialiseNewTask( TaskFunction_t pxTaskCode,
 
             uxReturn = pxTCB->uxPriority;
         }
-        portBASE_TYPE_EXIT_CRITICAL();
+        portTICK_TYPE_EXIT_CRITICAL();
 
         traceRETURN_uxTaskPriorityGet( uxReturn );
 
