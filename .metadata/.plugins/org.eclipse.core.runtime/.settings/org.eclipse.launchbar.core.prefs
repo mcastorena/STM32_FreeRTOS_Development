@@ -4,5 +4,6 @@ LaunchTargetManager/org.eclipse.launchbar.core.launchTargetType.local,Local/os=l
 configDescList=org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:FreeRTOS_Tasks,org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:FreeRTOS_LEDTasks
 eclipse.preferences.version=1
 org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:FreeRTOS_LEDTasks/activeLaunchMode=debug
+org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:FreeRTOS_LEDTasks/activeLaunchTarget=null\:---
 org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:FreeRTOS_Tasks/activeLaunchMode=run
 org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:FreeRTOS_Tasks/activeLaunchTarget=null\:---
