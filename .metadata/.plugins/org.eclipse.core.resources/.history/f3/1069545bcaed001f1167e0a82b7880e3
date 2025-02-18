@@ -421,10 +421,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		{
 			// Dequeue a character to queue the new line at the end of the queue
 			char tmpBuffer;
-			xQueueReceiveFromISR(queueData, (void*)&tmpBuffer, NULL);
-
-			// Queue newline character
-			xQueueSendToBackFromISR(queueData, (void*)&userData, NULL);
+			if(xQueueReceiveFromISR(queueData, (void*)&tmpBuffer, NULL) == pdTRUE)
+			{
+				// Queue newline character
+				xQueueSendToBackFromISR(queueData, (void*)&userData, NULL);
+			}
 		}
 	}
 

@@ -131,7 +131,7 @@ int main(void)
   configASSERT(queuePrint != NULL);
 
   // Enable UART interrupt based receive
-  HAL_UART_Receive_IT(&huart2, (uint8_t*)&userData, 1);
+  HAL_UART_Receive_IT(&huart2, &userData, 1);
 
   vTaskStartScheduler();
   /* USER CODE END 2 */
@@ -409,10 +409,10 @@ static void MX_GPIO_Init(void)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	// Check if queue is full
-	if(!xQueueIsQueueFullFromISR(queueData))
+	if(xQueueIsQueueFullFromISR(queueData) == pdFALSE)
 	{
 		// If queue is not full then enqueue a data byte
-		xQueueSendToBackFromISR(queueData, (void*)&userData, NULL);
+		xQueueSendToBackFromISR(queueData, &userData, NULL);
 	}
 	else
 	{
@@ -421,21 +421,18 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		{
 			// Dequeue a character to queue the new line at the end of the queue
 			char tmpBuffer;
-			xQueueReceiveFromISR(queueData, (void*)&tmpBuffer, NULL);
-
-			// Queue newline character
-			xQueueSendToBackFromISR(queueData, (void*)&userData, NULL);
+			if(xQueueReceiveFromISR(queueData, &tmpBuffer, NULL) == pdTRUE)
+			{
+				// Queue newline character
+				xQueueSendToBackFromISR(queueData, &userData, NULL);
+			}
 		}
 	}
 
 	// Send notification to command handling task if userData == \n
-	if(userData == '\n')
-	{
-		xTaskNotifyFromISR(cmdTask, 0, eNoAction, NULL);
-	}
 
 	// Re-enable UART RX in IT mode
-	HAL_UART_Receive_IT(&huart2, (uint8_t*)&userData, 1);
+	HAL_UART_Receive_IT(&huart2, &userData, 1);
 }
 /* USER CODE END 4 */
 

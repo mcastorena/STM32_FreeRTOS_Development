@@ -11,8 +11,7 @@ void cmdTask(void *param)
 {
 	while(1)
 	{
-		// Block using notify wait
-		//xTaskNotifyWait(NULL, NULL, NULL)
+
 	}
 }
 

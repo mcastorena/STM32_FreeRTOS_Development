@@ -60,12 +60,6 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-void menuTask(void *param);
-void printTask(void *param);
-void cmdTask(void *param);
-void ledTask(void *param);
-void rtcTask(void *param);
-
 
 /* USER CODE END EFP */
 

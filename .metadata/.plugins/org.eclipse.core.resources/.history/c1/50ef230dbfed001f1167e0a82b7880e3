@@ -45,17 +45,6 @@ RTC_HandleTypeDef hrtc;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-xTaskHandle handleCmdTask;
-xTaskHandle handleMenuTask;
-xTaskHandle handlePrintTask;
-xTaskHandle handleLEDTask;
-xTaskHandle handleRTCTask;
-
-QueueHandle_t queuePrint;
-QueueHandle_t queueData;
-
-volatile uint8_t userData;
-
 
 /* USER CODE END PV */
 
@@ -81,7 +70,6 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-	BaseType_t status;
 
   /* USER CODE END 1 */
 
@@ -107,33 +95,6 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
-  // Create all necessary tasks
-  status = xTaskCreate(cmdTask, "Command Task", 250, NULL, 2, &handleCmdTask);
-  configASSERT(status == pdPASS);
-
-  status = xTaskCreate(menuTask, "Menu Task", 250, NULL, 2, &handleMenuTask);
-  configASSERT(status == pdPASS);
-
-  status = xTaskCreate(printTask, "Print Task", 250, NULL, 2, &handlePrintTask);
-  configASSERT(status == pdPASS);
-
-  status = xTaskCreate(ledTask, "LED Task", 250, NULL, 2, &handleLEDTask);
-  configASSERT(status == pdPASS);
-
-  status = xTaskCreate(rtcTask, "RTC Task", 250, NULL, 2, &handleRTCTask);
-  configASSERT(status == pdPASS);
-
-  // Create queues
-  queueData = xQueueCreate(10, sizeof(char));
-  configASSERT(queueData != NULL);
-
-  queuePrint = xQueueCreate(10, sizeof(size_t));
-  configASSERT(queuePrint != NULL);
-
-  // Enable UART interrupt based receive
-  HAL_UART_Receive_IT(&huart2, (uint8_t*)&userData, 1);
-
-  vTaskStartScheduler();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -406,37 +367,6 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-	// Check if queue is full
-	if(!xQueueIsQueueFullFromISR(queueData))
-	{
-		// If queue is not full then enqueue a data byte
-		xQueueSendToBackFromISR(queueData, (void*)&userData, NULL);
-	}
-	else
-	{
-		// Queue is full, check if received character is newline
-		if(userData == '\n')
-		{
-			// Dequeue a character to queue the new line at the end of the queue
-			char tmpBuffer;
-			xQueueReceiveFromISR(queueData, (void*)&tmpBuffer, NULL);
-
-			// Queue newline character
-			xQueueSendToBackFromISR(queueData, (void*)&userData, NULL);
-		}
-	}
-
-	// Send notification to command handling task if userData == \n
-	if(userData == '\n')
-	{
-		xTaskNotifyFromISR(cmdTask, 0, eNoAction, NULL);
-	}
-
-	// Re-enable UART RX in IT mode
-	HAL_UART_Receive_IT(&huart2, (uint8_t*)&userData, 1);
-}
 /* USER CODE END 4 */
 
 /**
