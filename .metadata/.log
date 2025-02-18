@@ -703,3 +703,6 @@ java.io.FileNotFoundException: /home/engineering/STM32CubeIDE/workspace_1.16.1/S
 
 !ENTRY com.st.stm32cube.ide.mcu.debug.launch 2 0 2025-02-17 21:48:51.361
 !MESSAGE Won't launch debug session since we failed to locate the binary.
+
+!ENTRY com.st.stm32cube.ide.mcu.debug.launch 2 0 2025-02-17 22:02:27.578
+!MESSAGE Won't launch debug session since we failed to locate the binary.
